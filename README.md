@@ -7,3 +7,5 @@ SHAP method. As a result of this simple alteration to the
 NAM architecture, training can be restricted by a previous
 explanation of the dataset as domain knowledge. The integration of explanations as domain knowledge leads NAM,
 an interpretable model, to improve on performance metrics.
+
+<img width="359" alt="SHAM_architecture" src="https://user-images.githubusercontent.com/63663984/215523722-c760ba36-61a7-4094-954e-5903bfc03b32.png">
