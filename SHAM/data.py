@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, OrdinalEncoder, 
 from sklearn.model_selection import train_test_split
 from scipy import stats
 import warnings
-from Attn_ED import utils
+from SHAM import utils
 
 
 class ProcessData:

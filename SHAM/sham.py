@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import utils
+from SHAM import utils
 
 import torch
 import pytorch_lightning as pl
