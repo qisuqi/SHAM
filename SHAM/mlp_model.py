@@ -4,6 +4,7 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import shap
 from SHAM import utils
+from SHAM.data import ProcessData
 import time
 import warnings
 
@@ -156,7 +157,7 @@ class MLP:
         test_x = x_test_df_ids.drop(['ID', 'Date'], axis=1)
         test_x_array = np.array(test_x).astype('float32')
 
-        val_x = x_val_df_ids.drio(['ID', 'Date'], axis=1)
+        val_x = x_val_df_ids.drop(['ID', 'Date'], axis=1)
         val_x_array = np.array(val_x).astype('float32')
 
         warnings.filterwarnings("ignore")
@@ -187,44 +188,84 @@ class MLP:
             train_shap_array = np.reshape(train_shap_array,
                                           (train_shap_array.shape[1],
                                            train_shap_array.shape[2]))
-            val_shap_array = np.reshape(val_x_array,
+            val_shap_array = np.reshape(val_shap_array,
                                         (val_shap_array.shape[1],
                                          val_shap_array.shape[2]))
         else:
             test_shap_array = np.abs(np.mean(test_shap_array, axis=0))
             train_shap_array = np.abs(np.mean(train_shap_array, axis=0))
             val_shap_array = np.abs(np.mean(val_shap_array, axis=0))
+        
+        if self.regression:
+            porcess_data = ProcessData()
+            
+            test_shap_df1 = pd.DataFrame(test_shap_array,
+                                         columns=feature_names)
+            train_shap_df1 = pd.DataFrame(train_shap_array,
+                                          columns=feature_names)
+            val_shap_df1 = pd.DataFrame(val_shap_array,
+                                        columns=feature_names)
+                                    
+            test_shap_df1.insert(0, 'ID', x_test_df_ids['ID'])
+            test_shap_df1.insert(1, 'Date', x_test_df_ids['Date'])
+            
+            train_shap_df1.insert(0, 'ID', x_test_df_ids['ID'])
+            train_shap_df1.insert(1, 'Date', x_train_df_ids['Date'])
+            
+            val_shap_df1.insert(0, 'ID', x_test_df_ids['ID'])
+            val_shap_df1.insert(1, 'Date', x_val_df_ids['Date'])
+            
+            test_shap_df = porcess_data.preprocess_timesteps(test_shap_df1,
+                                                             static_cols_lens=0,
+                                                             n_in=1,
+                                                             n_out=1,
+                                                             groupby=False,
+                                                             dropnan=True)
+                                                         
+            train_shap_df = porcess_data.preprocess_timesteps(train_shap_df1,
+                                                              static_cols_lens=0,
+                                                              n_in=1,
+                                                              n_out=1,
+                                                              groupby=False,
+                                                              dropnan=True)
+                                                              
+            val_shap_df = porcess_data.preprocess_timesteps(val_shap_df1,
+                                                            static_cols_lens=0,
+                                                            n_in=1,
+                                                            n_out=1,
+                                                            groupby=False,
+                                                            dropnan=True)
+                                        
+        else:
+            test_shap_df1 = pd.DataFrame(test_shap_array,
+                                         columns=feature_names,
+                                         index=x_test_df_ids.index)
+            train_shap_df1 = pd.DataFrame(train_shap_array,
+                                          columns=feature_names,
+                                          index=x_train_df_ids)
+            val_shap_df1 = pd.DataFrame(val_shap_array,
+                                        columns=feature_names,
+                                        index=x_val_df_ids)
+                                    
+            test_shap_df = pd.merge(test_shap_df1,
+                                    y_test_df_ids,
+                                    how='inner',
+                                    on=test_shap_df1.index)
+            test_shap_df = test_shap_df.drop('key_0', axis=1)
+    
+            train_shap_df = pd.merge(train_shap_df1,
+                                     y_train_df_ids,
+                                     how='inner',
+                                     on=train_shap_df1.index)
+            train_shap_df = train_shap_df.drop('key_0', axis=1)
+    
+            val_shap_df = pd.merge(val_shap_df1,
+                                   y_val_df_ids,
+                                   how='inner',
+                                   on=val_shap_df1.index)
+            val_shap_df = val_shap_df.drop('key_0', axis=1)
 
-        test_shap_df1 = pd.DataFrame(test_shap_array,
-                                     columns=feature_names,
-                                     index=x_test_df_ids.index)
-        train_shap_df1 = pd.DataFrame(train_shap_array,
-                                      columns=feature_names,
-                                      index=x_train_df_ids)
-        val_shap_df1 = pd.DataFrame(val_shap_array,
-                                    columns=feature_names,
-                                    index=x_val_df_ids)
-
-        test_shap_df = pd.merge(test_shap_df1,
-                                y_test_df_ids,
-                                how='inner',
-                                on=test_shap_df1.index)
-        test_shap_df = test_shap_df.drop('key_0', axis=1)
-
-        train_shap_df = pd.merge(train_shap_df1,
-                                 y_train_df_ids,
-                                 how='inner',
-                                 on=train_shap_df1.index)
-        train_shap_df = train_shap_df.drop('key_0', axis=1)
-
-        val_shap_df = pd.merge(val_shap_df1,
-                               y_val_df_ids,
-                               how='inner',
-                               on=val_shap_df1.index)
-        val_shap_df = val_shap_df.drop('key_0', axis=1)
-
-        shap_df_concat = pd.concat([train_shap_df, val_shap_df, test_shap_df],
-                                   axis=0)
+        shap_df_concat = pd.concat([train_shap_df, val_shap_df, test_shap_df],axis=0)
 
         shap_cols = list(shap_df_concat.columns)
         shap_cols.remove('Date')

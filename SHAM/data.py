@@ -512,3 +512,91 @@ class ProcessData:
         else:
             return trainX, valX, testX, trainY, valY, testY
 
+
+    def split_dataset_per_user(self,
+                               data,
+                               num_class=2,
+                               regression=True,
+                               return_train_data=True,
+                               return_with_ids=True
+                               ):
+
+        Train, train_x, val_x, test_x, train_y, val_y, test_y = [], [], [], [], [], [], []
+
+        # Split the data into train, validation, and test per participant.
+        for i in data['ID'].unique():
+            sub_data = data[data['ID'] == i]
+            training_days = np.round(len(sub_data) * 0.8, 0).astype(int)
+
+            train = sub_data.iloc[:training_days, :]
+            test = sub_data.iloc[training_days:, :]
+
+            x_train, y_train = train.iloc[:, :-1], train.iloc[:, [0, -1]]
+            x_test, y_test = test.iloc[:, :-1], test.iloc[:, [0, -1]]
+
+            validation_days = np.round(len(train) * 0.2, 0).astype(int)
+
+            x_val = x_train.iloc[-validation_days:, :]
+            y_val = y_train.iloc[-validation_days:]
+
+            Train.append(train.values)
+            train_x.append(x_train.values)
+            val_x.append(x_val.values)
+            test_x.append(x_test.values)
+            train_y.append(y_train.values)
+            val_y.append(y_val.values)
+            test_y.append(y_test.values)
+
+        train_data = [x for xs in Train for x in xs]
+        train_df = pd.DataFrame(train_data, columns=data.columns)
+        train_df = train_df.drop(['ID', 'Date'], axis=1)
+
+        trainx = [x for xs in train_x for x in xs]
+        valx = [x for xs in val_x for x in xs]
+        testx = [x for xs in test_x for x in xs]
+
+        # Keep a copy of the split sets with the identifiers.
+        x_colnames = list(data.columns)
+        x_colnames.remove('Outcome')
+
+        trainX_df_ids = pd.DataFrame(trainx, columns=x_colnames)
+        trainX_df = trainX_df_ids.drop(['ID', 'Date'], axis=1)
+
+        valX_df_ids = pd.DataFrame(valx, columns=x_colnames)
+        valX_df = valX_df_ids.drop(['ID', 'Date'], axis=1)
+
+        testX_df_ids = pd.DataFrame(testx, columns=x_colnames)
+        testX_df = testX_df_ids.drop(['ID', 'Date'], axis=1)
+
+        trainY = [x for xs in train_y for x in xs]
+        valY = [x for xs in val_y for x in xs]
+        testY = [x for xs in test_y for x in xs]
+
+        trainY_df_ids = pd.DataFrame(trainY, columns=['ID', 'Outcome'])
+        trainY_df = trainY_df_ids.drop('ID', axis=1)
+
+        valY_df_ids = pd.DataFrame(valY, columns=['ID', 'Outcome'])
+        valY_df = valY_df_ids.drop('ID', axis=1)
+
+        testY_df_ids = pd.DataFrame(testY, columns=['ID', 'Outcome'])
+        testY_df = testY_df_ids.drop(['ID'], axis=1)
+
+        trainX, trainY = np.array(trainX_df).astype('float32'), np.array(trainY_df).reshape(-1, 1).astype('float32')
+        testX, testY = np.array(testX_df).astype('float32'), np.array(testY_df).reshape(-1, 1).astype('float32')
+        valX, valY = np.array(valX_df).astype('float32'), np.array(valY_df).reshape(-1, 1).astype('float32')
+
+        if not regression:
+            trainY = keras.utils.to_categorical(trainY, num_classes=num_class)
+            valY = keras.utils.to_categorical(valY, num_classes=num_class)
+            testY = keras.utils.to_categorical(testY, num_classes=num_class)
+
+        trainX = trainX.reshape((trainX.shape[0], trainX.shape[1], 1))
+        valX = valX.reshape((valX.shape[0], valX.shape[1], 1))
+        testX = testX.reshape((testX.shape[0], testX.shape[1], 1))
+
+        if return_train_data:
+            return train_df
+        elif return_with_ids:
+            return trainX_df_ids, valX_df_ids, testX_df_ids, trainY_df_ids, valY_df_ids, testY_df_ids
+        else:
+            return trainX, valX, testX, trainY, valY, testY
