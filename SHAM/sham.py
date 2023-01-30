@@ -71,8 +71,7 @@ class SHAM:
 
         self.shap_df = self.shap_df.add_suffix("_shap")
 
-        self.df = self.df.drop(["Unnamed: 0", "ID", "Date"], axis=1)
-        self.shap_df = self.shap_df.drop(["Unnamed: 0_shap"], axis=1)
+        self.df = self.df.drop(["ID", "Date"], axis=1)
         self.merged_df = pd.merge(self.df, self.shap_df, how="inner", left_index=True, right_index=True)
 
         feat_cols = self.df.columns[:-1]
